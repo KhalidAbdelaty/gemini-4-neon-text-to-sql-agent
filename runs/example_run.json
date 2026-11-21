@@ -1358,6 +1358,10 @@
     "original_matches_reference": true,
     "revision_matches_reference": true,
     "first_revision_passed": true,
+    "frozen_matches_text_sql": {
+      "original": true,
+      "final": true
+    },
     "correction_used": false,
     "original_ranking": [
       "partner",
