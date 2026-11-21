@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import base64
 import html
+import io
 import json
 from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+from PIL import Image  # installed with Streamlit
 
 from agent import (MAX_CORRECTIONS, MAX_REQUESTS, MAX_SECONDS, MAX_SPEND_USD, MAX_TOOL_CALLS,
                    MAX_TOOL_CALLS_PER_PHASE, MODEL, PRICE_CACHED, PRICE_INPUT, PRICE_OUTPUT, THINKING_LEVEL,
@@ -58,7 +60,7 @@ st.markdown(
         font-family: "Google Sans", "Product Sans", Arial, sans-serif; }}
       .stApp::before {{ content: ""; position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 1000000;
         background: linear-gradient(90deg, #EA4335, #FBBC05, #34A853, #4285F4); }}
-      .block-container {{ padding-top: 2rem; max-width: 1180px; }}
+      .block-container {{ padding-top: 4.5rem; max-width: 1180px; }}  /* clear the 60px header */
       [data-testid="stHeader"] {{ background: transparent; }}  /* keep the brand row visible under the toolbar */
       .stApp :is(p, li, h1, h2, h3, h4, label, button) {{
         font-family: "Google Sans", "Product Sans", Arial, sans-serif; }}
@@ -85,11 +87,12 @@ st.markdown(
       [data-testid="stCode"] .token:is(.string, .number, .boolean) {{ color: {GREEN_FILL} !important; }}
       [data-testid="stCode"] .token.operator {{ color: {RED_FILL} !important; }}
       [data-testid="stCode"] .token:is(.punctuation, .comment) {{ color: {GREY_700} !important; }}
-      .brand {{ display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; margin-bottom: .25rem; }}
-      .brand img {{ height: 26px; }}
+      .brand {{ display: flex; align-items: center; gap: .9rem; flex-wrap: wrap; margin-bottom: .5rem; }}
+      .brand img {{ height: 34px; width: auto; display: block; }}
       .mono {{ font-family: ui-monospace, Menlo, Consolas, monospace; }}
-      .model {{ font-size: .8rem; background: #FFFFFF; color: #000000; border: 1px solid {BORDER};
-        border-radius: .6rem; padding: .15rem .65rem; }}
+      .model {{ display: inline-flex; align-items: center; box-sizing: border-box; height: 34px;
+        padding: 0 .8rem; font-size: .95rem; line-height: 1; white-space: nowrap; background: #FFFFFF;
+        color: #000000; border: 1px solid {BORDER}; border-radius: .6rem; }}
       .pill {{ display: inline-block; border-radius: 999px; padding: .2rem .8rem; font-weight: 700;
         font-size: .9rem; margin: 0 .4rem .4rem 0; }}
       .pill-ok {{ background: {GREEN_FILL}; color: #FFFFFF; }}
@@ -108,8 +111,13 @@ st.markdown(
 )
 
 
-def b64(path: Path) -> str:
-    return base64.b64encode(path.read_bytes()).decode()
+@st.cache_data
+def trimmed_png_b64(path: str) -> str:
+    """The Gemini PNG has wide transparent margins; crop them so the mark fills its height."""
+    image = Image.open(path).convert("RGBA")
+    buffer = io.BytesIO()
+    image.crop(image.getchannel("A").getbbox()).save(buffer, format="PNG")
+    return base64.b64encode(buffer.getvalue()).decode()
 
 
 def pill(text: str, kind: str) -> str:
@@ -129,7 +137,7 @@ def one_line(text: str, limit: int = 150) -> str:
 
 st.markdown(
     f"""<div class="brand">
-      <img src="data:image/png;base64,{b64(ASSETS / 'gemini-logo.png')}" alt="Gemini logo"/>
+      <img src="data:image/png;base64,{trimmed_png_b64(str(ASSETS / 'gemini-logo.png'))}" alt="Gemini logo"/>
       <span class="model mono">{html.escape(MODEL)}</span>
     </div>""",
     unsafe_allow_html=True,
