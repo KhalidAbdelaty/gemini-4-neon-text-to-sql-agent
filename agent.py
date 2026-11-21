@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 import platform
+import re
 import sqlite3
 import time
 from datetime import datetime, timezone
@@ -156,6 +157,17 @@ def ranking(parsed: dict | None) -> list[str]:
     return [] if not parsed else [ch for ch, _ in sorted(parsed.items(), key=lambda kv: -kv[1][2])]
 
 
+def sql_matches_text(frozen_sql: str | None, text: str | None) -> bool:
+    """Confirm the frozen executed SQL matches the final ```sql block in the model's answer."""
+    if not frozen_sql or not text:
+        return False
+    blocks = re.findall(r"```sql\s*(.*?)```", text, flags=re.S | re.I)
+    if not blocks:
+        return False
+    norm = lambda s: " ".join(s.split()).rstrip(";")  # noqa: E731
+    return norm(frozen_sql) == norm(blocks[-1])
+
+
 # ------------------------------------------------------------------ the run
 def run_experiment(api_key: str | None = None) -> Iterator[dict]:
     """Yield progress events; the last one is {"type": "done", "record": ...}."""
@@ -290,7 +302,11 @@ def run_experiment(api_key: str | None = None) -> Iterator[dict]:
             current = "correction"
 
     final_phase = "correction" if "correction" in record["phases"] else "revision"
-    final_check = record["phases"].get(final_phase, {}).get("validation", {})
+    final_data = record["phases"].get(final_phase, {})
+    final_check = final_data.get("validation", {})
+    orig_completed = original.get("status") == "completed"
+    rev_completed = record["phases"].get("revision", {}).get("status") == "completed"
+    final_completed = final_data.get("status") == "completed"
     reqs = record["requests"]
     record.update({
         "elapsed_s": round(time.monotonic() - start, 1),
@@ -300,9 +316,13 @@ def run_experiment(api_key: str | None = None) -> Iterator[dict]:
                       "sql_matches_python": {m: reference.reference_sql(DB_PATH, m) == reference.reference_python(DB_PATH, m)
                                              for m in ("enrollment", "completion")}},
         "outcome": {
-            "original_matches_reference": original["validation"]["passed"],
-            "revision_matches_reference": bool(final_check.get("passed")),
-            "first_revision_passed": bool(record["phases"].get("revision", {}).get("validation", {}).get("passed")),
+            "original_matches_reference": orig_completed and original["validation"]["passed"],
+            "revision_matches_reference": final_completed and bool(final_check.get("passed")),
+            "first_revision_passed": rev_completed and bool(record["phases"].get("revision", {}).get("validation", {}).get("passed")),
+            "frozen_matches_text_sql": {
+                "original": sql_matches_text(original.get("frozen_sql"), original.get("text")),
+                "final": sql_matches_text(final_data.get("frozen_sql"), final_data.get("text")),
+            },
             "correction_used": corrections > 0,
             "original_ranking": ranking(original_parsed),
             "revised_ranking": ranking(revised_parsed),

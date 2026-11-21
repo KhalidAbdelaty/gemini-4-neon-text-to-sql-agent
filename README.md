@@ -13,6 +13,7 @@ All data is synthetic.
 - `agent.py` runs the experiment on the Interactions API and saves `runs/run_<UTC time>.json`
 - `reference.py` holds the reference SQL, a plain-Python cross-check, and the validator
 - `app_streamlit.py` shows a live or recorded run
+- `runs/example_run.json` sanitized recorded run from the tutorial (replays in Streamlit with zero API calls)
 
 ## Run it
 
@@ -25,7 +26,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-Create a `.env` file in this folder with one line:
+Copy `.env.example` to `.env` and add your key (not needed to replay `runs/example_run.json` in Streamlit):
 
 ```
 GEMINI_API_KEY=your-key
@@ -40,7 +41,6 @@ python agent.py          # one live run, billed to your key
 streamlit run app_streamlit.py
 ```
 
-In the app, "Run the analysis" starts a live run and "Show the latest recorded run" opens the newest file in
-`runs/` without calling the API.
+In the app, "Run the analysis" starts a live run and "Show the latest recorded run" opens the newest `runs/run_*.json` file (or `runs/example_run.json` out of the box) without calling the API.
 
 Tested with `google-genai` 3.6.1, Python 3.11.9, and SQLite 3.45.1 on November 21, 2026.

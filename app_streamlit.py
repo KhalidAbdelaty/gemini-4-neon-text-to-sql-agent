@@ -353,7 +353,10 @@ def render_run(record: dict) -> None:
 
 def latest_run() -> dict | None:
     paths = sorted(RUNS.glob("run_*.json"))
-    return json.loads(paths[-1].read_text(encoding="utf-8")) if paths else None
+    if paths:
+        return json.loads(paths[-1].read_text(encoding="utf-8"))
+    sample = RUNS / "example_run.json"
+    return json.loads(sample.read_text(encoding="utf-8")) if sample.exists() else None
 
 
 # ----------------------------------------------------------------- actions
