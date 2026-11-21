@@ -220,7 +220,7 @@ def log_event(log, e: dict, c: Counters) -> None:
                      f"({e['cached']:,} cached) · {e['output']:,} out · {e['thinking']:,} thinking · {e['latency_s']} s")
     elif kind == "tool_call":
         c.tools += 1
-        result = f":red-badge[error] {one_line(e['error'], 120)}" if e["error"] else f"{e['rows']} rows"
+        result = f":red-badge[error] {one_line(e['error'], 120)}" if e["error"] else f"{e['rows']} row{'' if e['rows'] == 1 else 's'}"
         log.markdown(f"{stamp} :blue-badge[run_sql] `{one_line(e['sql'])}` → {result}")
     elif kind == "answer":
         log.markdown(f"{stamp} :material/chat: Neon answered ({e['status']})")
